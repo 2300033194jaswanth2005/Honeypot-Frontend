@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import io from 'socket.io-client';
+import { io } from 'socket.io-client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import './App.css';
 
-const API_URL = 'http://localhost:5000/api';
-const socket = io('http://localhost:5000', { transports: ['websocket', 'polling'] });
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+const socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
 
 function App() {
     const [attacks, setAttacks] = useState([]);
@@ -49,15 +50,12 @@ function App() {
     useEffect(() => {
         loadData();
 
-        socket.on('connect', () => console.log('Connected to real-time feed'));
-        socket.on('connect_error', () => setError('WebSocket connection failed'));
+        socket.on('connect', () => setError(null));
+        socket.on('connect_error', () => setError('WebSocket connection failed. Real-time feed unavailable.'));
 
         socket.on('attack', (attack) => {
             setAttacks(prev => [attack, ...prev.slice(0, 99)]);
-            setReport(prev => prev ? {
-                ...prev,
-                totalAttacks: (prev.totalAttacks || 0) + 1
-            } : prev);
+            setReport(prev => prev ? { ...prev, totalAttacks: (prev.totalAttacks || 0) + 1 } : prev);
         });
 
         socket.on('service-created', () => loadServices());
