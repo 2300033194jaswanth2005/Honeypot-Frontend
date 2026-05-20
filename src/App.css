@@ -377,3 +377,23 @@ table tbody tr:hover {
 .report-section li {
     padding: 0.5rem 0;
 }
+
+.simulate-btn {
+    background: #c31432;
+    border: none;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.simulate-btn:hover:not(:disabled) {
+    background: #a01028;
+}
+
+.simulate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}

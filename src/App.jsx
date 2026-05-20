@@ -1,12 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { io } from 'socket.io-client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
-const socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
 
 function App() {
     const [attacks, setAttacks] = useState([]);
@@ -17,6 +14,8 @@ function App() {
     const [newService, setNewService] = useState({ type: 'ssh', port: '' });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [simulating, setSimulating] = useState(false);
+    const pollRef = useRef(null);
 
     const loadData = useCallback(async () => {
         try {
@@ -49,24 +48,21 @@ function App() {
 
     useEffect(() => {
         loadData();
+        pollRef.current = setInterval(loadData, 5000);
+        return () => clearInterval(pollRef.current);
+    }, [loadData]);
 
-        socket.on('connect', () => setError(null));
-        socket.on('connect_error', () => setError('WebSocket connection failed. Real-time feed unavailable.'));
-
-        socket.on('attack', (attack) => {
-            setAttacks(prev => [attack, ...prev.slice(0, 99)]);
-            setReport(prev => prev ? { ...prev, totalAttacks: (prev.totalAttacks || 0) + 1 } : prev);
-        });
-
-        socket.on('service-created', () => loadServices());
-
-        return () => {
-            socket.off('attack');
-            socket.off('service-created');
-            socket.off('connect');
-            socket.off('connect_error');
-        };
-    }, [loadData, loadServices]);
+    const simulateAttack = async () => {
+        setSimulating(true);
+        try {
+            await axios.post(`${API_URL}/simulate-attack`);
+            await loadData();
+        } catch (err) {
+            alert('Simulation failed: ' + err.message);
+        } finally {
+            setSimulating(false);
+        }
+    };
 
     const createService = async () => {
         if (!newService.port) return alert('Please enter a port number');
@@ -117,6 +113,9 @@ function App() {
             <header>
                 <h1>🛡️ AI-Enhanced Honeypot System</h1>
                 <nav>
+                    <button onClick={simulateAttack} disabled={simulating} className="simulate-btn">
+                        {simulating ? '⏳ Simulating...' : '⚡ Simulate Attack'}
+                    </button>
                     {['dashboard', 'attacks', 'profiles', 'services', 'intel'].map(tab => (
                         <button
                             key={tab}
